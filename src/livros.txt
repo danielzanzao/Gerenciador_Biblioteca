@@ -1,3 +1,2 @@
 Rust Programming,350,2024-11-30,Tecnologia
 Malu aprende Arquitetura,250,Outro,2024-03-30
-Diario de um banan,100,Ficcao,2003-04-25

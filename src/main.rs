@@ -1,18 +1,15 @@
 use chrono::NaiveDate;
-use std::io::{self, Write};
-use std::fs::{File, OpenOptions};
-use std::io::{BufReader, BufRead};
+use serde::{Serialize, Deserialize};
+use std::fs::{self, OpenOptions};
+use std::io::{self, BufRead, Write};
 
-mod utils;
-use utils::{validar_data, validar_string, validar_obrigatorio, validar_numero};
-
-#[derive(Debug)]
+#[derive(Debug, Serialize, Deserialize)]
 pub enum Genero {
     Ficcao,
-    NaoFiccao,
-    Ciencia,
-    Tecnologia,
-    Historia,
+    Biografia,
+    Poesia,
+    Infantil,
+    Romance,
     Outro,
 }
 
@@ -22,17 +19,17 @@ impl std::str::FromStr for Genero {
     fn from_str(input: &str) -> Result<Genero, Self::Err> {
         match input.to_lowercase().as_str() {
             "ficcao" => Ok(Genero::Ficcao),
-            "nao ficcao" | "não ficção" => Ok(Genero::NaoFiccao),
-            "ciencia" => Ok(Genero::Ciencia),
-            "tecnologia" => Ok(Genero::Tecnologia),
-            "historia" => Ok(Genero::Historia),
+            "biografia" => Ok(Genero::Biografia),
+            "poesia" => Ok(Genero::Poesia),
+            "infantil" => Ok(Genero::Infantil),
+            "romance" => Ok(Genero::Romance),
             "outro" => Ok(Genero::Outro),
             _ => Err(format!("Gênero inválido: {}", input)),
         }
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct Livro {
     pub titulo: String,
     pub numero_paginas: u32,
@@ -42,13 +39,8 @@ pub struct Livro {
 
 impl Livro {
     pub fn novo(titulo: &str, numero_paginas: u32, data_publicacao: &str, genero: &str) -> Result<Livro, String> {
-        validar_string(titulo, 100)?;
-        validar_numero(numero_paginas, 1, 10000)?;
-        let data = validar_data(data_publicacao)?;
-        validar_string(genero, 50)?;
-        validar_obrigatorio(titulo)?;
-        validar_obrigatorio(genero)?;
-
+        let data = NaiveDate::parse_from_str(data_publicacao, "%Y-%m-%d")
+            .map_err(|_| "Data inválida, use o formato AAAA-MM-DD".to_string())?;
         let genero_enum = genero.parse::<Genero>()?;
 
         Ok(Livro {
@@ -58,57 +50,105 @@ impl Livro {
             genero: genero_enum,
         })
     }
-
-    pub fn salvar(&self, arquivo: &str) -> io::Result<()> {
-        let mut file = OpenOptions::new().create(true).append(true).open(arquivo)?;
-        writeln!(
-            file,
-            "{},{},{:?},{}",
-            self.titulo,
-            self.numero_paginas,
-            self.genero,
-            self.data_publicacao.format("%Y-%m-%d")
-        )?;
-        Ok(())
-    }
 }
 
-// Função para listar os livros
+fn salvar_livros(arquivo: &str, livros: &Vec<Livro>) -> io::Result<()> {
+    let serialized = bincode::serialize(livros).expect("Erro ao serializar os dados.");
+    fs::write(arquivo, serialized)?;
+    Ok(())
+}
+
+fn carregar_livros(arquivo: &str) -> io::Result<Vec<Livro>> {
+    let data = fs::read(arquivo).unwrap_or_else(|_| Vec::new());
+    if data.is_empty() {
+        return Ok(Vec::new());
+    }
+    let livros: Vec<Livro> = bincode::deserialize(&data).expect("Erro ao deserializar os dados.");
+    Ok(livros)
+}
+
 fn listar_livros(arquivo: &str) -> io::Result<()> {
-    let file = File::open(arquivo)?;
-    let reader = BufReader::new(file);
-    println!("=== Lista de Livros ===");
-    for (i, line) in reader.lines().enumerate() {
-        let line = line?;
-        println!("{}. {}", i + 1, line);
+    let livros = carregar_livros(arquivo)?;
+
+    if livros.is_empty() {
+        println!("Não há livros cadastrados.");
+    } else {
+        println!("=== Lista de Livros ===");
+        for (i, livro) in livros.iter().enumerate() {
+            println!(
+                "{}. Título: {}, Páginas: {}, Publicação: {}, Gênero: {:?}",
+                i + 1,
+                livro.titulo,
+                livro.numero_paginas,
+                livro.data_publicacao,
+                livro.genero
+            );
+        }
     }
     Ok(())
 }
 
-// Função para alterar um livro
-fn alterar_livro(arquivo: &str) -> io::Result<()> {
-    println!("Funcionalidade de alteração de livros ainda não implementada.");
-    Ok(())
-}
-
-// Função para deletar um livro
 fn deletar_livro(arquivo: &str) -> io::Result<()> {
-    println!("Funcionalidade de deleção de livros ainda não implementada.");
+    let mut livros = carregar_livros(arquivo)?;
+
+    if livros.is_empty() {
+        println!("Não há livros cadastrados para deletar.");
+        return Ok(());
+    }
+
+    println!("=== Lista de Livros ===");
+    for (i, livro) in livros.iter().enumerate() {
+        println!(
+            "{}. Título: {}, Páginas: {}, Publicação: {}, Gênero: {:?}",
+            i + 1,
+            livro.titulo,
+            livro.numero_paginas,
+            livro.data_publicacao,
+            livro.genero
+        );
+    }
+
+    print!("Digite o número do livro que deseja deletar (ou 0 para cancelar): ");
+    io::stdout().flush().unwrap();
+    let mut escolha = String::new();
+    io::stdin().read_line(&mut escolha).unwrap();
+    let escolha: usize = match escolha.trim().parse() {
+        Ok(num) => num,
+        Err(_) => {
+            println!("Entrada inválida.");
+            return Ok(());
+        }
+    };
+
+    if escolha == 0 {
+        println!("Operação de deleção cancelada.");
+        return Ok(());
+    }
+
+    if escolha > livros.len() {
+        println!("Número inválido.");
+        return Ok(());
+    }
+
+    let livro_removido = livros.remove(escolha - 1);
+    println!("Livro removido: {}", livro_removido.titulo);
+
+    salvar_livros(arquivo, &livros)?;
+
+    println!("Lista atualizada salva com sucesso.");
     Ok(())
 }
 
 fn main() {
-    let arquivo = "livros.txt";
+    let arquivo = "livros.bin";
 
     loop {
-        println!("=== Sistema da Biblioteca Libri Mendes ===");
-        println!("Escolha a operação que deseja fazer:");
-        println!("1. Adicionar Livros");
-        println!("2. Listar os Livros");
-        println!("3. Alterar algum livro");
-        println!("4. Deletar algum livro");
+        println!("=== Sistema da Biblioteca ===");
+        println!("1. Adicionar Livro");
+        println!("2. Listar Livros");
+        println!("3. Deletar Livro");
         println!("0. Sair");
-        print!("Digite a sua escolha: ");
+        print!("Escolha uma opção: ");
         io::stdout().flush().unwrap();
 
         let mut escolha = String::new();
@@ -116,91 +156,42 @@ fn main() {
 
         match escolha.trim() {
             "1" => {
-                println!("=== Adicionar Livro ===");
                 let mut titulo = String::new();
                 let mut numero_paginas = String::new();
                 let mut data_publicacao = String::new();
                 let mut genero = String::new();
 
-                print!("Digite o título do livro: ");
+                print!("Digite o título: ");
                 io::stdout().flush().unwrap();
                 io::stdin().read_line(&mut titulo).unwrap();
-                let titulo = titulo.trim();
 
                 print!("Digite o número de páginas: ");
                 io::stdout().flush().unwrap();
                 io::stdin().read_line(&mut numero_paginas).unwrap();
-                let numero_paginas: u32 = match numero_paginas.trim().parse() {
-                    Ok(num) => num,
-                    Err(_) => {
-                        println!("Erro: Número inválido.");
-                        continue;
-                    }
-                };
+                let numero_paginas: u32 = numero_paginas.trim().parse().unwrap_or(0);
 
                 print!("Digite a data de publicação (AAAA-MM-DD): ");
                 io::stdout().flush().unwrap();
                 io::stdin().read_line(&mut data_publicacao).unwrap();
-                let data_publicacao = data_publicacao.trim();
 
-                println!("Escolha o gênero do livro:");
-                println!("1. Ficção");
-                println!("2. Não Ficção");
-                println!("3. Ciência");
-                println!("4. Tecnologia");
-                println!("5. História");
-                println!("6. Outro");
-                print!("Digite a sua escolha: ");
+                print!("Digite o gênero: ");
                 io::stdout().flush().unwrap();
                 io::stdin().read_line(&mut genero).unwrap();
-                let genero = match genero.trim() {
-                    "1" => "Ficcao",
-                    "2" => "Nao Ficcao",
-                    "3" => "Ciencia",
-                    "4" => "Tecnologia",
-                    "5" => "Historia",
-                    "6" => "Outro",
-                    _ => {
-                        println!("Erro: Opção de gênero inválida.");
-                        continue;
-                    }
-                };
 
-                match Livro::novo(titulo, numero_paginas, data_publicacao, genero) {
+                match Livro::novo(&titulo.trim(), numero_paginas, &data_publicacao.trim(), &genero.trim()) {
                     Ok(livro) => {
-                        println!("Livro criado com sucesso: {:?}", livro);
-
-                        if let Err(e) = livro.salvar(arquivo) {
-                            println!("Erro ao salvar o livro: {}", e);
-                        } else {
-                            println!("Livro salvo com sucesso no arquivo.");
-                        }
+                        let mut livros = carregar_livros(arquivo).unwrap_or_else(|_| Vec::new());
+                        livros.push(livro);
+                        salvar_livros(arquivo, &livros).unwrap();
+                        println!("Livro adicionado com sucesso!");
                     }
-                    Err(e) => {
-                        println!("Erro ao criar o livro: {}", e);
-                    }
+                    Err(e) => println!("Erro: {}", e),
                 }
             }
-            "2" => {
-                if let Err(e) = listar_livros(arquivo) {
-                    println!("Erro ao listar os livros: {}", e);
-                }
-            }
-            "3" => {
-                if let Err(e) = alterar_livro(arquivo) {
-                    println!("Erro ao alterar o livro: {}", e);
-                }
-            }
-            "4" => {
-                if let Err(e) = deletar_livro(arquivo) {
-                    println!("Erro ao deletar o livro: {}", e);
-                }
-            }
-            "0" => {
-                println!("Saindo do sistema. Até logo!");
-                break;
-            }
-            _ => println!("Opção inválida! Tente novamente."),
+            "2" => listar_livros(arquivo).unwrap(),
+            "3" => deletar_livro(arquivo).unwrap(),
+            "0" => break,
+            _ => println!("Opção inválida."),
         }
     }
 }
