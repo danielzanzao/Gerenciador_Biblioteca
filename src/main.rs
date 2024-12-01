@@ -155,39 +155,73 @@ fn main() {
         io::stdin().read_line(&mut escolha).unwrap();
 
         match escolha.trim() {
-            "1" => {
-                let mut titulo = String::new();
-                let mut numero_paginas = String::new();
-                let mut data_publicacao = String::new();
-                let mut genero = String::new();
+"1" => {
+    let mut titulo = String::new();
+    let mut numero_paginas = String::new();
+    let mut data_publicacao = String::new();
+    let mut genero_opcao = String::new();
 
-                print!("Digite o título: ");
-                io::stdout().flush().unwrap();
-                io::stdin().read_line(&mut titulo).unwrap();
+    // Entrada para título
+    print!("Digite o título: ");
+    io::stdout().flush().unwrap();
+    io::stdin().read_line(&mut titulo).unwrap();
 
-                print!("Digite o número de páginas: ");
-                io::stdout().flush().unwrap();
-                io::stdin().read_line(&mut numero_paginas).unwrap();
-                let numero_paginas: u32 = numero_paginas.trim().parse().unwrap_or(0);
+    // Entrada para número de páginas
+    print!("Digite o número de páginas: ");
+    io::stdout().flush().unwrap();
+    io::stdin().read_line(&mut numero_paginas).unwrap();
+    let numero_paginas: u32 = match numero_paginas.trim().parse() {
+        Ok(num) => num,
+        Err(_) => {
+            println!("Número inválido! Tente novamente.");
+            continue;
+        }
+    };
 
-                print!("Digite a data de publicação (AAAA-MM-DD): ");
-                io::stdout().flush().unwrap();
-                io::stdin().read_line(&mut data_publicacao).unwrap();
+    // Entrada para data de publicação
+    print!("Digite a data de publicação (AAAA-MM-DD): ");
+    io::stdout().flush().unwrap();
+    io::stdin().read_line(&mut data_publicacao).unwrap();
 
-                print!("Digite o gênero: ");
-                io::stdout().flush().unwrap();
-                io::stdin().read_line(&mut genero).unwrap();
+    // Menu para escolha do gênero
+    println!("Escolha o gênero do livro:");
+    println!("1. Ficção");
+    println!("2. Biografia");
+    println!("3. Poesia");
+    println!("4. Infantil");
+    println!("5. Romance");
+    println!("6. Outro");
 
-                match Livro::novo(&titulo.trim(), numero_paginas, &data_publicacao.trim(), &genero.trim()) {
-                    Ok(livro) => {
-                        let mut livros = carregar_livros(arquivo).unwrap_or_else(|_| Vec::new());
-                        livros.push(livro);
-                        salvar_livros(arquivo, &livros).unwrap();
-                        println!("Livro adicionado com sucesso!");
-                    }
-                    Err(e) => println!("Erro: {}", e),
-                }
-            }
+    print!("Digite o número correspondente ao gênero: ");
+    io::stdout().flush().unwrap();
+    io::stdin().read_line(&mut genero_opcao).unwrap();
+
+    let genero = match genero_opcao.trim() {
+        "1" => Genero::Ficcao,
+        "2" => Genero::Biografia,
+        "3" => Genero::Poesia,
+        "4" => Genero::Infantil,
+        "5" => Genero::Romance,
+        "6" => Genero::Outro,
+        _ => {
+            println!("Opção inválida! Tente novamente.");
+            continue;
+        }
+    };
+
+    // Criação do livro
+    match Livro::novo(&titulo.trim(), numero_paginas, &data_publicacao.trim(), &format!("{:?}", genero)) {
+        Ok(livro) => {
+            let mut livros = carregar_livros(arquivo).unwrap_or_else(|_| Vec::new());
+            livros.push(livro);
+            salvar_livros(arquivo, &livros).unwrap();
+            println!("Livro adicionado com sucesso!");
+        }
+        Err(e) => println!("Erro: {}", e),
+    }
+}
+
+
             "2" => listar_livros(arquivo).unwrap(),
             "3" => deletar_livro(arquivo).unwrap(),
             "0" => break,

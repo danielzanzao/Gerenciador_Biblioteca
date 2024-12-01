@@ -1,2 +1,0 @@
-Rust Programming,350,2024-11-30,Tecnologia
-Malu aprende Arquitetura,250,Outro,2024-03-30
