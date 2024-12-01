@@ -42,7 +42,7 @@ impl Livro {
     pub fn novo(titulo: &str, numero_paginas: u32, data_publicacao: &str, genero: &str) -> Result<Livro, String> {
         validar_string(titulo, 100)?;
         validar_numero(numero_paginas, 1, 2000)?;
-        validar_data(data_publicacao)?; // Validação detalhada da data
+        validar_data(data_publicacao)?; 
         validar_obrigatorio(titulo)?;
         validar_obrigatorio(genero)?;
 
@@ -51,7 +51,7 @@ impl Livro {
         Ok(Livro {
             titulo: titulo.to_string(),
             numero_paginas,
-            data_publicacao: validar_data(data_publicacao)?, // Garantia de formato e validade
+            data_publicacao: validar_data(data_publicacao)?, 
             genero: genero_enum,
         })
     }
@@ -200,7 +200,6 @@ fn alterar_livro(arquivo: &str) -> io::Result<()> {
         livro.titulo = novo_titulo.trim().to_string();
     }
 
-    // Alterar número de páginas
     let mut novo_numero_paginas = String::new();
     print!(
         "Novo número de páginas (ou pressione Enter para manter '{}'): ",
@@ -215,7 +214,7 @@ fn alterar_livro(arquivo: &str) -> io::Result<()> {
         }
     }
 
-    // Alterar data de publicação
+
     let mut nova_data_publicacao = String::new();
     print!(
         "Nova data de publicação (AAAA-MM-DD) (ou pressione Enter para manter '{}'): ",
@@ -230,7 +229,6 @@ fn alterar_livro(arquivo: &str) -> io::Result<()> {
         }
     }
 
-    // Alterar gênero
     println!("Escolha o novo gênero do livro:");
     println!("1. Ficção");
     println!("2. Biografia");
@@ -357,5 +355,41 @@ let numero_paginas: u32 = match numero_paginas.trim().parse() {
             "0" => break,
             _ => println!("Opção inválida."),
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use chrono::NaiveDate;
+
+    #[test]
+    fn test_criar_livro_valido() {
+        let livro = Livro::novo("Livro Teste", 100, "2023-12-01", "Ficcao");
+        assert!(livro.is_ok());
+    }
+
+    #[test]
+    fn test_criar_livro_titulo_vazio() {
+        let livro = Livro::novo("", 100, "2023-12-01", "Ficcao");
+        assert!(livro.is_err());
+    }
+
+    #[test]
+    fn test_criar_livro_numero_paginas_invalido() {
+        let livro = Livro::novo("Livro Teste", 0, "2023-12-01", "Ficcao");
+        assert!(livro.is_err());
+    }
+
+    #[test]
+    fn test_criar_livro_data_invalida() {
+        let livro = Livro::novo("Livro Teste", 100, "2023-13-01", "Ficcao");
+        assert!(livro.is_err());
+    }
+
+    #[test]
+    fn test_criar_livro_genero_invalido() {
+        let livro = Livro::novo("Livro Teste", 100, "2023-12-01", "GeneroInvalido");
+        assert!(livro.is_err());
     }
 }
