@@ -1,8 +1,7 @@
 use chrono::NaiveDate;
 use std::str::FromStr;
 use std::fmt::{self, Display, Formatter};
-use std::fs::File;
-use std::io::{BufRead, BufReader};
+
 
 // Validação de nome
 pub fn validar_string(valor: &str, max_len: usize) -> Result<(), String> {
@@ -36,32 +35,5 @@ pub fn validar_obrigatorio(valor: &str) -> Result<(), String> {
     Ok(())
 }
 
-pub fn carregar_livros(arquivo: &str) -> io::Result<Vec<Livro>> {
-    let file = File::open(arquivo)?;
-    let reader = BufReader::new(file);
 
-    let mut livros = Vec::new();
-    for line in reader.lines() {
-        let line = line?;
-        let campos: Vec<&str> = line.split(',').collect();
-
-        if campos.len() != 4 {
-            continue;
-        }
-
-        let titulo = campos[0].to_string();
-        let numero_paginas = campos[1].parse::<u32>().unwrap_or(0);
-        let genero = campos[2].parse::<Genero>().unwrap_or(Genero::Outro);
-        let data_publicacao = NaiveDate::parse_from_str(campos[3], "%Y-%m-%d").unwrap_or_else(|_| NaiveDate::from_ymd(1900, 1, 1));
-
-        livros.push(Livro {
-            titulo,
-            numero_paginas,
-            data_publicacao,
-            genero,
-        });
-    }
-
-    Ok(livros)
-}
 
