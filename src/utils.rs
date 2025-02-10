@@ -1,8 +1,7 @@
 use chrono::NaiveDate;
 use chrono::Datelike;
-use std::fs::OpenOptions;
-use std::io::BufRead;
-
+use std::str::FromStr;
+use std::fmt::{self, Display, Formatter};
 
 
 // Validação do nome
